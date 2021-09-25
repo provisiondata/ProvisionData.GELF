@@ -1,12 +1,12 @@
 ﻿/*******************************************************************************
  * MIT License
  *
- * Copyright 2020 Provision Data Systems Inc.  https://provisiondata.com
+ * Copyright 2021 Provision Data Systems Inc.  https://provisiondata.com
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a 
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * the rights to use, copy, modify, merge, publish, distribute, sub-license,
  * and/or sell copies of the Software, and to permit persons to whom the 
  * Software is furnished to do so, subject to the following conditions:
  *
@@ -25,50 +25,50 @@
 
 namespace ProvisionData.GELF.Internal
 {
-    using System;
-    using System.Net.Http;
-    using System.Text;
-    using System.Threading;
-    using System.Threading.Tasks;
+	using System;
+	using System.Net.Http;
+	using System.Text;
+	using System.Threading;
+	using System.Threading.Tasks;
 
-    internal class HttpGelfClient : GelfClientBase
-    {
-        private readonly HttpClient _httpClient;
+	internal class HttpGelfClient : GelfClientBase
+	{
+		private readonly HttpClient _httpClient;
 
-        public HttpGelfClient(GelfOptions options)
-            : base(options)
-        {
-            var uriBuilder = new UriBuilder(options.Host);
+		public HttpGelfClient(GelfOptions options)
+			: base(options)
+		{
+			var uriBuilder = new UriBuilder(options.Host);
 
-            _httpClient = new HttpClient
-            {
-                BaseAddress = uriBuilder.Uri,
-                Timeout = options.HttpTimeout
-            };
+			_httpClient = new HttpClient
+			{
+				BaseAddress = uriBuilder.Uri,
+				Timeout = options.HttpTimeout
+			};
 
-            if (options.HttpHeaders != null)
-            {
-                foreach (var header in options.HttpHeaders)
-                {
-                    _httpClient.DefaultRequestHeaders.Add(header.Name, header.Value);
-                }
-            }
-        }
+			if (options.HttpHeaders != null)
+			{
+				foreach (var header in options.HttpHeaders)
+				{
+					_httpClient.DefaultRequestHeaders.Add(header.Name, header.Value);
+				}
+			}
+		}
 
-        public override async Task SendMessageAsync(Message message, CancellationToken cancellationToken = default)
-        {
-            var content = new StringContent(message.GetJson(), Encoding.UTF8, "application/json");
-            var result = await _httpClient.PostAsync("gelf", content).ConfigureAwait(false);
-            result.EnsureSuccessStatusCode();
-        }
+		public override async Task SendMessageAsync(Message message, CancellationToken cancellationToken = default)
+		{
+			var content = new StringContent(message.GetJson(), Encoding.UTF8, "application/json");
+			var result = await _httpClient.PostAsync("gelf", content, cancellationToken).ConfigureAwait(false);
+			result.EnsureSuccessStatusCode();
+		}
 
-        protected override void Dispose(Boolean disposing)
-        {
-            if (disposing)
-            {
-                _httpClient.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-    }
+		protected override void Dispose(Boolean disposing)
+		{
+			if (disposing)
+			{
+				_httpClient.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+	}
 }

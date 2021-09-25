@@ -1,12 +1,12 @@
 ﻿/*******************************************************************************
  * MIT License
  *
- * Copyright 2020 Provision Data Systems Inc.  https://provisiondata.com
+ * Copyright 2021 Provision Data Systems Inc.  https://provisiondata.com
  * 
  * Permission is hereby granted, free of charge, to any person obtaining a 
  * copy of this software and associated documentation files (the "Software"),
  * to deal in the Software without restriction, including without limitation
- * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * the rights to use, copy, modify, merge, publish, distribute, sub-license,
  * and/or sell copies of the Software, and to permit persons to whom the 
  * Software is furnished to do so, subject to the following conditions:
  *
@@ -25,58 +25,62 @@
 
 namespace ProvisionData.GELF.Internal
 {
-    using System;
-    using System.Diagnostics;
-    using System.Net.Sockets;
-    using System.Threading;
-    using System.Threading.Tasks;
+	using System;
+	using System.Diagnostics;
+	using System.Net.Sockets;
+	using System.Threading;
+	using System.Threading.Tasks;
 
-    internal class TcpGelfClient : GelfClientBase
-    {
-        private readonly TcpClient _client;
-        private NetworkStream? _stream;
+	internal class TcpGelfClient : GelfClientBase
+	{
+		private readonly TcpClient _client;
+		private NetworkStream? _stream;
 
-        public TcpGelfClient(GelfOptions options)
-            : base(options)
-        {
-            _client = new TcpClient();
-        }
+		public TcpGelfClient(GelfOptions options)
+			: base(options)
+		{
+			_client = new TcpClient();
+		}
 
-        public override async Task SendMessageAsync(Message message, CancellationToken cancellationToken = default)
-        {
-            if (message is null)
-                throw new ArgumentNullException(nameof(message));
+		public override async Task SendMessageAsync(Message message, CancellationToken cancellationToken = default)
+		{
+			if (message is null)
+			{
+				throw new ArgumentNullException(nameof(message));
+			}
 
-            if (_stream is null)
-                _stream = await ConnectAsync().ConfigureAwait(false);
+			if (_stream is null)
+			{
+				_stream = await ConnectAsync().ConfigureAwait(false);
+			}
 
-            var json = message.GetJson();
-            Debug.WriteLine(json);
-            var payload = message.GetBytes();
+			var json = message.GetJson();
+			Debug.WriteLine(json);
+			var payload = message.GetBytes();
 
-            Array.Resize(ref payload, payload.Length + 1);
-            payload[^1] = 0x00;
+			Array.Resize(ref payload, payload.Length + 1);
+			payload[^1] = 0x00;
 
-            await _stream.WriteAsync(payload, 0, payload.Length).ConfigureAwait(false);
-            await _stream.FlushAsync().ConfigureAwait(false);
-        }
+			await _stream.WriteAsync(payload.AsMemory(0, payload.Length), cancellationToken).ConfigureAwait(false);
+			await _stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+		}
 
-        private async Task<NetworkStream> ConnectAsync()
-        {
-            await _client.ConnectAsync(IPEndPoint.Address, IPEndPoint.Port).ConfigureAwait(false);
-            return _client.GetStream();
-        }
+		private async Task<NetworkStream> ConnectAsync()
+		{
+			await _client.ConnectAsync(IPEndPoint.Address, IPEndPoint.Port).ConfigureAwait(false);
+			return _client.GetStream();
+		}
 
-        protected override void Dispose(Boolean disposing)
-        {
-            if (disposing)
-            {
-                _client.Close();
-                _client.Dispose();
-                _stream?.Dispose();
-            }
+		protected override void Dispose(Boolean disposing)
+		{
+			if (disposing)
+			{
+				_client.Close();
+				_client.Dispose();
+				_stream?.Dispose();
+			}
 
-            base.Dispose(disposing);
-        }
-    }
+			base.Dispose(disposing);
+		}
+	}
 }
